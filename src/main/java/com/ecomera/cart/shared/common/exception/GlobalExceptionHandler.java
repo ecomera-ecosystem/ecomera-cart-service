@@ -1,6 +1,7 @@
 package com.ecomera.cart.shared.common.exception;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
+import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,6 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
@@ -198,7 +198,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
-            DataIntegrityViolationException ex, WebRequest request) {
+            DataIntegrityViolationException ex,
+            HttpServletRequest request) {
 
         String message = "Duplicate entry not allowed";
 
@@ -206,9 +207,30 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.CONFLICT.value())
                 .error("Conflict")
                 .message(message)
-                .path(request.getDescription(false).replace("uri=", ""))
+                .path(request.getRequestURI())
                 .build();
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ErrorResponse> handleFeignException(
+            FeignException ex,
+            HttpServletRequest request) {
+
+        int status = ex.status() != -1 ? ex.status() : HttpStatus.SERVICE_UNAVAILABLE.value();
+        HttpStatus httpStatus = HttpStatus.resolve(status) != null
+                ? HttpStatus.resolve(status) : HttpStatus.SERVICE_UNAVAILABLE;
+
+        log.error("Feign error from {}: {}", request.getRequestURI(), ex.getMessage());
+
+        ErrorResponse error = ErrorResponse.of(
+                status,
+                httpStatus.getReasonPhrase(),
+                "An error occurred while communicating with an internal service",
+                request.getRequestURI()
+        );
+
+        return ResponseEntity.status(httpStatus).body(error);
     }
 }

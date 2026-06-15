@@ -14,6 +14,7 @@ import com.ecomera.cart.client.dto.ProductDto;
 import com.ecomera.cart.client.dto.ProductImageDto;
 import com.ecomera.cart.shared.common.exception.BusinessException;
 import com.ecomera.cart.shared.common.exception.ResourceNotFoundException;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -24,6 +25,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -45,7 +47,15 @@ public class CartService {
             evict = @CacheEvict(value = "cart-summary", key = "#userId")
     )
     public CartDto addItem(UUID userId, AddToCartRequest request) {
-        ProductDto product = productServiceClient.getProductById(request.productId());
+        ProductDto product;
+        try {
+            product = productServiceClient.getProductById(request.productId());
+        } catch (FeignException.NotFound e) {
+            throw new ResourceNotFoundException("Product", "id", request.productId());
+        } catch (FeignException e) {
+            log.error("Failed to fetch product {}: {}", request.productId(), e.getMessage());
+            throw new BusinessException("Product service is unavailable. Please try again later.");
+        }
 
         Cart cart = cartRepository.findByUserIdWithItems(userId)
                 .orElseGet(() -> createNewCart(userId));
@@ -125,17 +135,26 @@ public class CartService {
     @Cacheable(value = "cart", key = "#userId")
     public CartDto getCart(UUID userId) {
         log.debug("Cache miss fetching cart for user {} from DB", userId);
-        Cart cart = cartRepository.findByUserIdWithItems(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(Cart.class, "userId", userId));
-        return cartMapper.toDto(cart);
+        return cartRepository.findByUserIdWithItems(userId)
+                .map(cartMapper::toDto)
+                .orElseGet(() -> CartDto.builder()
+                        .userId(userId)
+                        .items(List.of())
+                        .totalPrice(BigDecimal.ZERO)
+                        .totalItems(0)
+                        .build());
     }
 
     @Cacheable(value = "cart-summary", key = "#userId")
     public CartSummaryDto getCartSummary(UUID userId) {
         log.debug("Cache miss fetching cart summary for user {} from DB", userId);
-        Cart cart = cartRepository.findByUserIdWithItems(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(Cart.class, "userId", userId));
-        return cartMapper.toSummaryDto(cart);
+        return cartRepository.findByUserIdWithItems(userId)
+                .map(cartMapper::toSummaryDto)
+                .orElseGet(() -> CartSummaryDto.builder()
+                        .userId(userId)
+                        .totalItems(0)
+                        .totalPrice(BigDecimal.ZERO)
+                        .build());
     }
 
     @Cacheable(value = "cart", key = "'id-' + #cartId")
@@ -149,9 +168,14 @@ public class CartService {
     @Cacheable(value = "cart", key = "'user-' + #targetUserId")
     public CartDto getCartByUserId(UUID targetUserId) {
         log.debug("Cache miss fetching cart for user {} from DB", targetUserId);
-        Cart cart = cartRepository.findByUserIdWithItems(targetUserId)
-                .orElseThrow(() -> new ResourceNotFoundException(Cart.class, "userId", targetUserId));
-        return cartMapper.toDto(cart);
+        return cartRepository.findByUserIdWithItems(targetUserId)
+                .map(cartMapper::toDto)
+                .orElseGet(() -> CartDto.builder()
+                        .userId(targetUserId)
+                        .items(List.of())
+                        .totalPrice(BigDecimal.ZERO)
+                        .totalItems(0)
+                        .build());
     }
 
     @Transactional
