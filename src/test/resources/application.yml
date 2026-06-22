@@ -22,6 +22,8 @@ spring:
       enabled: false
     vault:
       enabled: false
+  redis:
+    enabled: false
   data:
     redis:
       autoconfigure:
