@@ -1,9 +1,27 @@
 spring:
+  config:
+    import: ""
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+  liquibase:
+    enabled: false
   cloud:
     config:
       enabled: false
-  liquibase:
-    enabled: false
+    discovery:
+      enabled: false
+    vault:
+      enabled: false
   data:
     redis:
       autoconfigure:
