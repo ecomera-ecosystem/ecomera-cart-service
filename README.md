@@ -8,6 +8,8 @@
 ![OpenFeign](https://img.shields.io/badge/OpenFeign-Integrated-6DB33F)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-yellow?logo=open-source-initiative&logoColor=white)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=ecomera-cart-service&metric=coverage)](https://sonarcloud.io/summary/new_code?id=ecomera-cart-service)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=ecomera-cart-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ecomera-cart-service)
 
 Shopping cart microservice for the Ecomera ecosystem. Manages user carts with Redis caching, scheduled expiration cleanup, and product data synchronization via OpenFeign.
 
